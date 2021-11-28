@@ -1,0 +1,91 @@
+#!/usr/bin/env node
+//拼接ASIC字符集字符
+const figlet = require('figlet');
+const versionStr = figlet.textSync("Shi Xiao Bo");
+//渐变文字
+const Printer = require('@darkobits/lolcatjs');
+const _version = require("../package.json").version;
+const input = `  \n 石晓波脚手架${_version} \n oneHundred.cool \n ${versionStr}`;
+const transformed = Printer.fromString(input);
+//颜色文字，新版之只支持es module 不支持commonjs模块规范
+const chalk = require('chalk');
+//用户交互
+var inquirer = require('inquirer');
+//执行shell命令
+const shell = require('shelljs');
+//解析命令行 交互
+const { program } = require('commander');
+//加载中状态
+const ora = require("ora");
+const download = require('download-git-repo');
+
+program.version(transformed);
+program.option('c, create', "😁初始化项目");
+
+
+const dictionary = {
+    create(env) {
+        inquirer
+            .prompt([
+                {
+                    type: "text",
+                    message: "① 请输入工程名称",
+                    name: 'dirname'
+                },
+                {
+                    type: "list",
+                    name: 'jskind',
+                    mesage: '②请选择语言',
+                    choices: ['⊙ typescript', '⊙ javascript']
+                }
+            ])
+            .then((answers) => {
+                console.log(answers)
+                const _pwd = shell.pwd().stdout;
+                const projectPath = `${_pwd}/${answers.dirname}`
+                shell.rm("-rf", projectPath)
+                shell.mkdir(projectPath)
+                const spinner = ora("⏰ downloading template ...")
+                spinner.start();
+
+                const template = 'direct:https://github.com/passerByBo/xb-react-webpack5-template.git';
+           
+                // download('direct:https://gitlab.com/flippidippi/download-git-repo-fixture.git', 'test/tmp', { clone: true }, function (err) {
+                //     console.log(err ? 'Error' : 'Success')
+                //   })
+               
+                download(template, projectPath,{ clone: true }, function (err) {
+                    spinner.stop();
+                    //下载成功也会报错
+                    if (err) {
+                        console.log(chalk.red('下载失败🐯'),err)
+                    } else {
+                        console.log('下载成功')
+                        //修改package.json 下的name属性
+                        shell.sed("-i", "xb-react-webpack5-template", answers.dirname, projectPath + "/package.json");
+                    }
+                })
+
+
+            })
+            .catch((error) => {
+                if (error.isTtyError) {
+                    console.log(chalk.red("错误 结束 ❌"))
+                } else {
+
+                }
+            });
+    }
+}
+program.usage('[cmd] <options>')
+    .arguments('<cmd> [env]')
+    .action(function (cmd, env) {
+        const handler = dictionary[cmd];
+        if (handler) {
+            handler(env)
+        } else {
+            console.log(chalk.blue(cmd), chalk.red("暂未支持！"))
+        }
+    })
+
+program.parse(process.argv);
